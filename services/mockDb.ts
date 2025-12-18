@@ -89,6 +89,15 @@ export const mockAuthService = {
     return demoUsers;
   },
 
+  createUser: async (userData: Partial<User>): Promise<User> => {
+    if (isGAS()) return runGas('createUser', userData);
+    const newUser = {
+      ...userData,
+      id: Math.random().toString(36).substr(2, 9),
+    } as User;
+    return newUser;
+  },
+
   updateUserAccessLevel: async (userId: string, newLevel: User['access_level']): Promise<User> => {
     if (isGAS()) return runGas('updateUserAccessLevel', userId, newLevel);
     const user = demoUsers.find(u => u.id === userId);
