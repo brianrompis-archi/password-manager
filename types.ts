@@ -1,3 +1,4 @@
+
 export interface Password {
   id: string;
   description: string;
@@ -8,6 +9,16 @@ export interface Password {
   last_edited_by: string;
   hotel_id: string;
   login_type: 'Admin' | 'WiFi' | 'PMS' | 'Vendor' | 'Social' | 'Other';
+}
+
+export interface PasswordHistoryEntry {
+  id: string;
+  password_id: string;
+  description: string;
+  username: string;
+  password_value: string;
+  changed_by: string;
+  change_date: string;
 }
 
 export interface Hotel {

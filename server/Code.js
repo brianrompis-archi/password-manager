@@ -1,3 +1,4 @@
+
 // --- CONFIGURATION ---
 const DB_ID = '1iyGuNYEyVfhC07EUWm_XguBwVCXF5txq3JuWOLQFwN0'; 
 
@@ -12,7 +13,6 @@ function doGet(e) {
 
 /**
  * Automatically gets the email of the current logged-in Google User.
- * Note: Requires the user to have authorized the script.
  */
 function getActiveUserEmail() {
   return Session.getActiveUser().getEmail();
@@ -65,27 +65,59 @@ function getPasswordsForHotel(hotelId) {
     }));
 }
 
+/**
+ * Retrieves audit history for a specific password
+ */
+function getPasswordHistory(passwordId) {
+  const allHistory = getTableData('PasswordHistory');
+  return (allHistory || [])
+    .filter(h => h.password_id === passwordId)
+    .map(h => ({
+      ...h,
+      password_value: decrypt(h.encrypted_password)
+    }))
+    .sort((a, b) => new Date(b.change_date) - new Date(a.change_date));
+}
+
 function savePassword(data, userId) {
   const ss = getDb();
-  const sheet = ss.getSheetByName('Passwords');
-  const now = new Date().toISOString().split('T')[0];
+  const passwordSheet = ss.getSheetByName('Passwords');
+  const historySheet = ss.getSheetByName('PasswordHistory');
+  const now = new Date().toISOString();
   const encryptedValue = encrypt(data.password_value);
 
   if (data.id) {
-    const result = findRowIndex(sheet, data.id);
+    // 1. Log CURRENT state to history BEFORE updating
+    const oldData = getTableData('Passwords').find(p => p.id == data.id);
+    if (oldData) {
+      const historyId = Utilities.getUuid();
+      // Columns: id, password_id, description, username, encrypted_password, changed_by, change_date
+      historySheet.appendRow([
+        historyId, 
+        oldData.id, 
+        oldData.description, 
+        oldData.username, 
+        oldData.encrypted_password, 
+        oldData.last_edited_by || oldData.created_by, 
+        oldData.last_edited || now
+      ]);
+    }
+
+    // 2. Update main table
+    const result = findRowIndex(passwordSheet, data.id);
     if (result === -1) throw new Error("Password ID not found");
     const row = result;
-    sheet.getRange(row, 3).setValue(data.description);
-    sheet.getRange(row, 4).setValue(data.username);
-    sheet.getRange(row, 5).setValue(encryptedValue);
-    sheet.getRange(row, 6).setValue(data.login_type);
-    sheet.getRange(row, 8).setValue(now);
-    sheet.getRange(row, 9).setValue(userId);
+    passwordSheet.getRange(row, 3).setValue(data.description);
+    passwordSheet.getRange(row, 4).setValue(data.username);
+    passwordSheet.getRange(row, 5).setValue(encryptedValue);
+    passwordSheet.getRange(row, 6).setValue(data.login_type);
+    passwordSheet.getRange(row, 8).setValue(now);
+    passwordSheet.getRange(row, 9).setValue(userId);
     return { ...data, last_edited: now, last_edited_by: userId };
   } else {
     const newId = Utilities.getUuid();
     const newRow = [newId, data.hotel_id, data.description, data.username, encryptedValue, data.login_type, userId, now, userId];
-    sheet.appendRow(newRow);
+    passwordSheet.appendRow(newRow);
     return { ...data, id: newId, created_by: userId, last_edited: now, last_edited_by: userId };
   }
 }
@@ -101,15 +133,10 @@ function getAllUsers() {
   return getTableData('Users');
 }
 
-/**
- * Creates a new user in the system
- */
 function createUser(userData) {
   const ss = getDb();
   const sheet = ss.getSheetByName('Users');
   const newId = Utilities.getUuid();
-  
-  // Columns: id, email, name, position, group_id, access_level, avatar
   const newRow = [
     newId,
     userData.email.toLowerCase(),
@@ -119,18 +146,8 @@ function createUser(userData) {
     userData.access_level || 'viewer',
     userData.avatar || null
   ];
-  
   sheet.appendRow(newRow);
-  
-  return {
-    id: newId,
-    email: userData.email.toLowerCase(),
-    name: userData.name,
-    position: userData.position,
-    group_id: userData.group_id,
-    access_level: userData.access_level,
-    avatar: userData.avatar
-  };
+  return { id: newId, ...userData, email: userData.email.toLowerCase() };
 }
 
 function updateUserAccessLevel(userId, newLevel) {
@@ -160,7 +177,7 @@ function getTableData(sheetName) {
     const obj = {};
     headers.forEach((header, index) => {
       let val = row[index];
-      if (val instanceof Date) val = val.toISOString().split('T')[0];
+      if (val instanceof Date) val = val.toISOString();
       obj[header] = val === "" ? null : val;
     });
     return obj;

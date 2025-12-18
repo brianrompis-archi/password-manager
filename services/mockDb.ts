@@ -1,7 +1,6 @@
 
-import { Group, GroupHotel, Hotel, Password, User, UserHotel } from '../types';
+import { Group, GroupHotel, Hotel, Password, PasswordHistoryEntry, User, UserHotel } from '../types';
 
-// Fix: Added and exported demoUsers to resolve the "no exported member 'demoUsers'" error in PasswordDetailModal.tsx
 export const demoUsers: User[] = [
   { 
     id: 'u1', 
@@ -30,7 +29,6 @@ export const demoUsers: User[] = [
   }
 ];
 
-// --- HELPER: Detect Environment ---
 const isGAS = () => typeof window !== 'undefined' && (window as any).google && (window as any).google.script;
 
 const runGas = (functionName: string, ...args: any[]): Promise<any> => {
@@ -47,22 +45,14 @@ const runGas = (functionName: string, ...args: any[]): Promise<any> => {
 };
 
 export const mockAuthService = {
-  /**
-   * Triggers the Google Sign-In flow by checking current session
-   */
   signInWithGoogle: async (): Promise<User> => {
-    if (isGAS()) {
-      return runGas('login');
-    }
-    // Mock for local dev
+    if (isGAS()) return runGas('login');
     await new Promise(resolve => setTimeout(resolve, 1000));
-    // Default to first mock user for local testing
     return demoUsers[0];
   },
 
   getAccessibleHotels: async (user: User): Promise<Hotel[]> => {
     if (isGAS()) return runGas('getAccessibleHotels', user);
-    // Mock hotels for local development
     return [
       { id: 'h1', name: 'Grand Archipelago Bali', group_id: 'g1' },
       { id: 'h2', name: 'Archipelago City Jakarta', group_id: 'g1' }
@@ -71,6 +61,11 @@ export const mockAuthService = {
 
   getPasswordsForHotel: async (hotelId: string): Promise<Password[]> => {
     if (isGAS()) return runGas('getPasswordsForHotel', hotelId);
+    return [];
+  },
+
+  getPasswordHistory: async (passwordId: string): Promise<PasswordHistoryEntry[]> => {
+    if (isGAS()) return runGas('getPasswordHistory', passwordId);
     return [];
   },
 
@@ -85,7 +80,6 @@ export const mockAuthService = {
 
   getAllUsers: async (): Promise<User[]> => {
     if (isGAS()) return runGas('getAllUsers');
-    // Fix: Return exported demoUsers for local testing consistency
     return demoUsers;
   },
 
