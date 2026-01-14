@@ -8,7 +8,7 @@ export interface Password {
   last_edited: string;
   last_edited_by: string;
   hotel_id: string;
-  login_type: 'Admin' | 'WiFi' | 'PMS' | 'Vendor' | 'Social' | 'Other';
+  login_type: string; // Updated to string to support dynamic categories from the DB
 }
 
 export interface PasswordHistoryEntry {
@@ -51,10 +51,16 @@ export interface Group {
   name: string;
 }
 
+
 export interface GroupHotel {
   id: string;
   group_id: string;
   hotel_id: string;
+}
+
+export interface Category {
+  id: string;
+  name: string;
 }
 
 // Helper type for the authenticated session

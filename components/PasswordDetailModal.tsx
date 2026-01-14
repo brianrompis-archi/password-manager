@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Password, PasswordHistoryEntry, User as UserType } from '../types';
+import { Password, PasswordHistoryEntry, User as UserType, Category } from '../types';
 import { mockAuthService } from '../services/mockDb';
 import { 
   X, 
@@ -22,9 +22,10 @@ interface PasswordDetailModalProps {
   onClose: () => void;
   password?: Password;
   users: UserType[];
+  categories: Category[];
 }
 
-const PasswordDetailModal: React.FC<PasswordDetailModalProps> = ({ isOpen, onClose, password, users }) => {
+const PasswordDetailModal: React.FC<PasswordDetailModalProps> = ({ isOpen, onClose, password, users, categories }) => {
   const [activeTab, setActiveTab] = useState<'details' | 'history'>('details');
   const [showPassword, setShowPassword] = useState(false);
   const [history, setHistory] = useState<PasswordHistoryEntry[]>([]);
@@ -74,6 +75,11 @@ const PasswordDetailModal: React.FC<PasswordDetailModalProps> = ({ isOpen, onClo
     return user ? user.name : id;
   };
 
+  const getCategoryName = (id: string) => {
+    const cat = categories.find(c => c.id === id);
+    return cat ? cat.name : id;
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
   };
@@ -106,11 +112,11 @@ const PasswordDetailModal: React.FC<PasswordDetailModalProps> = ({ isOpen, onClo
                <h2 className="text-xl font-bold text-slate-900 leading-tight">{password.description}</h2>
                <div className="flex items-center gap-2 mt-1">
                  <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border
-                    ${password.login_type === 'Admin' ? 'bg-red-50 text-red-700 border-red-100' : 
-                      password.login_type === 'WiFi' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                    ${getCategoryName(password.login_type).toLowerCase().includes('admin') ? 'bg-red-50 text-red-700 border-red-100' : 
+                      getCategoryName(password.login_type).toLowerCase().includes('wifi') ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
                       'bg-blue-50 text-blue-700 border-blue-100'
                     }`}>
-                    {password.login_type}
+                    {getCategoryName(password.login_type)}
                  </span>
                </div>
              </div>
