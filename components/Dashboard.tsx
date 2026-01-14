@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { AuthSession, Hotel, Password } from '../types';
+import { AuthSession, Hotel, Password, User } from '../types';
 import { mockAuthService } from '../services/mockDb';
 import PasswordModal from './PasswordModal';
 import PasswordDetailModal from './PasswordDetailModal';
@@ -37,6 +38,7 @@ const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
   const [currentView, setCurrentView] = useState<ViewMode>('passwords');
   const [selectedHotel, setSelectedHotel] = useState<Hotel | null>(session.accessibleHotels[0] || null);
   const [passwords, setPasswords] = useState<Password[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -54,7 +56,6 @@ const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
   const canEdit = session.user.access_level === 'manager' || isAdmin;
 
   // Derived state for filtered passwords
-  // Defensive check: Ensure passwords is an array before filtering
   const filteredPasswords = (passwords || []).filter(p => {
     const matchesSearch = 
       (p.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -63,23 +64,34 @@ const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
     return matchesSearch && matchesType;
   });
 
-  // Fetch passwords when hotel changes
+  // Fetch passwords and users
+  useEffect(() => {
+    loadAllUsers();
+  }, []);
+
   useEffect(() => {
     if (selectedHotel && currentView === 'passwords') {
       loadPasswords();
     }
   }, [selectedHotel, currentView]);
 
+  const loadAllUsers = async () => {
+    try {
+      const users = await mockAuthService.getAllUsers();
+      setAllUsers(users);
+    } catch (e) {
+      console.error("Failed to load users for registry", e);
+    }
+  };
+
   const loadPasswords = async () => {
     if (!selectedHotel) return;
     setLoading(true);
     try {
       const data = await mockAuthService.getPasswordsForHotel(selectedHotel.id);
-      // Defensive check: Ensure response is an array
       if (Array.isArray(data)) {
         setPasswords(data);
       } else {
-        console.warn("Received invalid password data format", data);
         setPasswords([]);
       }
     } catch (e) {
@@ -119,7 +131,7 @@ const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
     if (!selectedHotel) return;
     try {
       await mockAuthService.savePassword(data as any, session.user.id);
-      await loadPasswords(); // Reload list
+      await loadPasswords();
     } catch (e) {
       console.error("Failed to save", e);
       throw e;
@@ -181,7 +193,7 @@ const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
             </button>
           </div>
 
-          {/* Navigation Links (Admin Only) */}
+          {/* Navigation Links */}
           {isAdmin && (
             <div className="px-3 py-4 space-y-1 border-b border-slate-800">
               <div className="px-3 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
@@ -208,7 +220,7 @@ const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
             </div>
           )}
 
-          {/* Hotel List (Only show if in Password View) */}
+          {/* Hotel List */}
           {currentView === 'passwords' && (
             <div className="flex-1 overflow-y-auto py-6 px-3 space-y-1">
               <div className="px-3 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
@@ -285,20 +297,13 @@ const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
               {currentView === 'users' ? 'User Administration' : (selectedHotel ? selectedHotel.name : 'Select a Hotel')}
             </h1>
           </div>
-          
-          <div className="hidden md:flex items-center text-sm text-slate-500 gap-6">
-             <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                <span>Sync Active</span>
-             </div>
-          </div>
         </header>
 
         {/* Content Area */}
         <div className="flex-1 overflow-auto p-4 lg:p-8">
           
           {currentView === 'users' ? (
-            <UserManagement currentUser={session.user} />
+            <UserManagement currentUser={session.user} onUserChange={loadAllUsers} />
           ) : (
             selectedHotel ? (
               <div className="max-w-6xl mx-auto space-y-6">
@@ -361,7 +366,6 @@ const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
                     </div>
                   ) : (
                     <>
-                      {/* Desktop Table View */}
                       <div className="hidden md:block overflow-x-auto">
                         <table className="w-full text-left text-sm text-slate-600">
                           <thead className="bg-slate-50 border-b border-slate-200 font-medium text-slate-500 uppercase text-xs">
@@ -457,7 +461,6 @@ const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
                             onClick={() => handleViewPassword(p)}
                             className="p-4 flex flex-col gap-3 hover:bg-slate-50 transition-colors cursor-pointer"
                           >
-                            
                             <div className="flex justify-between items-start">
                               <div className="flex items-center gap-3">
                                 <div className="p-2 bg-slate-100 rounded-lg shrink-0">
@@ -491,34 +494,6 @@ const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
                                   {revealedIds.has(p.id) ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                 </button>
                             </div>
-
-                            <div className="flex items-center gap-2 pt-1">
-                                <button 
-                                  onClick={(e) => copyToClipboard(p.password_value, e)}
-                                  className="flex-1 flex items-center justify-center gap-2 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 active:bg-slate-100 transition-colors"
-                                >
-                                  <Copy className="w-3.5 h-3.5" />
-                                  Copy
-                                </button>
-                                {canEdit && (
-                                  <>
-                                    <button 
-                                      onClick={(e) => handleOpenModal(p, e)}
-                                      className="flex-1 flex items-center justify-center gap-2 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 active:bg-slate-100 transition-colors"
-                                    >
-                                      <Pencil className="w-3.5 h-3.5" />
-                                      Edit
-                                    </button>
-                                    <button 
-                                      onClick={(e) => handleDeletePassword(p.id, e)}
-                                      className="flex-none p-2 bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-colors"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </>
-                                )}
-                            </div>
-
                           </div>
                         ))}
                       </div>
@@ -555,6 +530,7 @@ const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
            isOpen={!!viewingPassword}
            onClose={() => setViewingPassword(undefined)}
            password={viewingPassword}
+           users={allUsers}
         />
       </main>
     </div>

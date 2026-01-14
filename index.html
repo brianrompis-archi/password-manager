@@ -1,13 +1,12 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ARCHIPELAGO Password Manager</title>
-    <!-- We keep Tailwind CDN for simplicity in this setup, 
-         but strictly speaking, you could install it via npm too. -->
     <script src="https://cdn.tailwindcss.com"></script>
-  <script type="importmap">
+    <script type="importmap">
 {
   "imports": {
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
@@ -20,11 +19,9 @@
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
 </head>
   <body class="bg-slate-50 text-slate-900">
     <div id="root"></div>
-    <!-- This points to your local entry file for the build tool -->
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>

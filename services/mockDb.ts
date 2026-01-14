@@ -10,22 +10,6 @@ export const demoUsers: User[] = [
     group_id: 'g1', 
     access_level: 'admin', 
     avatar: 'https://picsum.photos/100/100' 
-  },
-  { 
-    id: 'u2', 
-    email: 'bob@globalresorts.com', 
-    name: 'Bob Smith', 
-    position: 'IT Support', 
-    group_id: 'g1', 
-    access_level: 'manager' 
-  },
-  {
-    id: 'u3',
-    email: 'charlie@globalresorts.com',
-    name: 'Charlie Clerk',
-    position: 'Receptionist',
-    group_id: 'g1',
-    access_level: 'viewer'
   }
 ];
 
@@ -45,8 +29,8 @@ const runGas = (functionName: string, ...args: any[]): Promise<any> => {
 };
 
 export const mockAuthService = {
-  signInWithGoogle: async (): Promise<User> => {
-    if (isGAS()) return runGas('login');
+  signInWithCredentials: async (email: string, password: string): Promise<User> => {
+    if (isGAS()) return runGas('loginWithCredentials', email, password);
     await new Promise(resolve => setTimeout(resolve, 1000));
     return demoUsers[0];
   },

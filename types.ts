@@ -37,6 +37,7 @@ export interface User {
   group_id: string | null;
   access_level: AccessLevel;
   avatar?: string;
+  password?: string; // New field for authentication
 }
 
 export interface UserHotel {
