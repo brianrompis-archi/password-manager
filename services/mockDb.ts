@@ -49,12 +49,29 @@ export const mockAuthService = {
     ];
   },
 
+  getAllHotels: async (): Promise<Hotel[]> => {
+    if (isGAS()) return runGas('getAllHotels');
+    return [
+      { id: 'h1', name: 'Grand Archipelago Bali', group_id: 'g1' },
+      { id: 'h2', name: 'Archipelago City Jakarta', group_id: 'g1' }
+    ];
+  },
+
   getAccessibleHotels: async (user: User): Promise<Hotel[]> => {
     if (isGAS()) return runGas('getAccessibleHotels', user);
     return [
       { id: 'h1', name: 'Grand Archipelago Bali', group_id: 'g1' },
       { id: 'h2', name: 'Archipelago City Jakarta', group_id: 'g1' }
     ];
+  },
+
+  getUserPermissions: async (userId: string): Promise<string[]> => {
+    if (isGAS()) return runGas('getUserPermissions', userId);
+    return [];
+  },
+
+  updateUserPermissions: async (userId: string, hotelIds: string[]): Promise<void> => {
+    if (isGAS()) return runGas('updateUserPermissions', userId, hotelIds);
   },
 
   getPasswordsForHotel: async (hotelId: string): Promise<Password[]> => {

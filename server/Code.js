@@ -42,6 +42,38 @@ function getLoginTypes() {
   return getTableData('Categories');
 }
 
+function getAllHotels() {
+  return getTableData('Hotels');
+}
+
+function getUserPermissions(userId) {
+  const permissions = getTableData('Permissions');
+  return permissions
+    .filter(p => p.user_id === userId)
+    .map(p => p.hotel_id);
+}
+
+function updateUserPermissions(userId, hotelIds) {
+  const ss = getDb();
+  const sheet = ss.getSheetByName('Permissions');
+  const data = sheet.getDataRange().getValues();
+  
+  // 1. Remove existing permissions for this user (starting from bottom to avoid index shift)
+  for (let i = data.length - 1; i >= 1; i--) {
+    if (data[i][1] === userId) {
+      sheet.deleteRow(i + 1);
+    }
+  }
+  
+  // 2. Add new permissions
+  hotelIds.forEach(hotelId => {
+    const newId = Utilities.getUuid();
+    sheet.appendRow([newId, userId, hotelId]);
+  });
+  
+  return { success: true };
+}
+
 function getAccessibleHotels(user) {
   const hotels = getTableData('Hotels');
   const permissions = getTableData('Permissions');
