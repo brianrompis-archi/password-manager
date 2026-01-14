@@ -1,8 +1,24 @@
 
 import React, { useEffect, useState } from 'react';
-import { User, AccessLevel } from '../types';
+import { User, AccessLevel, Hotel } from '../types';
 import { mockAuthService } from '../services/mockDb';
-import { UserCog, Shield, ShieldAlert, Eye, Plus, X, UserPlus, Loader2, Mail, Briefcase, Layers } from 'lucide-react';
+import { 
+  UserCog, 
+  Shield, 
+  ShieldAlert, 
+  Eye, 
+  Plus, 
+  X, 
+  UserPlus, 
+  Loader2, 
+  Mail, 
+  Briefcase, 
+  Layers, 
+  LockKeyhole,
+  CheckCircle2,
+  Building2,
+  Search
+} from 'lucide-react';
 
 interface UserManagementProps {
   currentUser: User;
@@ -14,7 +30,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onUserChan
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   
-  // Modal State
+  // Create User Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newUser, setNewUser] = useState<Partial<User>>({
@@ -24,6 +40,15 @@ const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onUserChan
     group_id: '',
     access_level: 'viewer'
   });
+
+  // Permissions Modal State
+  const [isPermModalOpen, setIsPermModalOpen] = useState(false);
+  const [targetUser, setTargetUser] = useState<User | null>(null);
+  const [allHotels, setAllHotels] = useState<Hotel[]>([]);
+  const [selectedHotels, setSelectedHotels] = useState<string[]>([]);
+  const [loadingPerms, setLoadingPerms] = useState(false);
+  const [savingPerms, setSavingPerms] = useState(false);
+  const [permSearch, setPermSearch] = useState('');
 
   useEffect(() => {
     loadUsers();
@@ -50,6 +75,44 @@ const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onUserChan
       console.error("Failed to update role", e);
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  const openPermissionsModal = async (user: User) => {
+    setTargetUser(user);
+    setIsPermModalOpen(true);
+    setLoadingPerms(true);
+    try {
+      const [hotels, perms] = await Promise.all([
+        mockAuthService.getAllHotels(),
+        mockAuthService.getUserPermissions(user.id)
+      ]);
+      setAllHotels(hotels);
+      setSelectedHotels(perms);
+    } catch (e) {
+      console.error("Failed to load permissions data", e);
+    } finally {
+      setLoadingPerms(false);
+    }
+  };
+
+  const handleToggleHotel = (hotelId: string) => {
+    setSelectedHotels(prev => 
+      prev.includes(hotelId) ? prev.filter(id => id !== hotelId) : [...prev, hotelId]
+    );
+  };
+
+  const handleSavePermissions = async () => {
+    if (!targetUser) return;
+    setSavingPerms(true);
+    try {
+      await mockAuthService.updateUserPermissions(targetUser.id, selectedHotels);
+      setIsPermModalOpen(false);
+    } catch (e) {
+      console.error("Failed to save permissions", e);
+      alert("Error saving permissions.");
+    } finally {
+      setSavingPerms(false);
     }
   };
 
@@ -84,6 +147,10 @@ const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onUserChan
     }
   };
 
+  const filteredPermHotels = allHotels.filter(h => 
+    h.name.toLowerCase().includes(permSearch.toLowerCase())
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -101,7 +168,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onUserChan
           </div>
           <div>
             <h2 className="text-xl font-bold text-slate-900">User Management</h2>
-            <p className="text-slate-500 text-sm">Manage user access levels and permissions.</p>
+            <p className="text-slate-500 text-sm">Manage user access levels and assigned permissions.</p>
           </div>
         </div>
         
@@ -123,6 +190,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onUserChan
                 <th className="px-6 py-4">Position</th>
                 <th className="px-6 py-4">Group</th>
                 <th className="px-6 py-4">Access Level</th>
+                <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -181,12 +249,125 @@ const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onUserChan
                       )}
                     </div>
                   </td>
+                  <td className="px-6 py-4 text-right">
+                    <button
+                      onClick={() => openPermissionsModal(user)}
+                      className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                      title="Manage Access"
+                    >
+                      <LockKeyhole className="w-5 h-5" />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Hotel Permissions Modal */}
+      {isPermModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+             <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <div className="flex items-center gap-4">
+                <div className="p-2.5 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-100">
+                  <LockKeyhole className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">Manage Access</h2>
+                  <p className="text-xs text-slate-500 font-medium mt-0.5">Assigned hotels for {targetUser?.name}</p>
+                </div>
+              </div>
+              <button onClick={() => setIsPermModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-2 hover:bg-slate-100 rounded-full transition-colors">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="p-8 flex-1 overflow-hidden flex flex-col space-y-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input 
+                  type="text" 
+                  placeholder="Filter hotels..." 
+                  value={permSearch}
+                  onChange={e => setPermSearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                />
+              </div>
+
+              {loadingPerms ? (
+                 <div className="flex-1 flex flex-col items-center justify-center py-12 space-y-4">
+                    <Loader2 className="w-10 h-10 text-indigo-600 animate-spin" />
+                    <p className="text-sm font-medium text-slate-500">Retrieving permission matrix...</p>
+                 </div>
+              ) : (
+                <div className="flex-1 overflow-y-auto pr-2 space-y-2 custom-scrollbar">
+                  {filteredPermHotels.length === 0 ? (
+                    <div className="text-center py-12 text-slate-400 text-sm italic">No hotels found.</div>
+                  ) : (
+                    filteredPermHotels.map(hotel => (
+                      <div 
+                        key={hotel.id}
+                        onClick={() => handleToggleHotel(hotel.id)}
+                        className={`
+                          group flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer
+                          ${selectedHotels.includes(hotel.id) 
+                            ? 'bg-indigo-50 border-indigo-200' 
+                            : 'bg-white border-slate-100 hover:border-slate-200 shadow-sm'}
+                        `}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-lg ${selectedHotels.includes(hotel.id) ? 'bg-white' : 'bg-slate-50'}`}>
+                            <Building2 className={`w-5 h-5 ${selectedHotels.includes(hotel.id) ? 'text-indigo-600' : 'text-slate-400'}`} />
+                          </div>
+                          <div>
+                            <span className={`text-sm font-bold ${selectedHotels.includes(hotel.id) ? 'text-indigo-900' : 'text-slate-700'}`}>
+                              {hotel.name}
+                            </span>
+                            {hotel.group_id && (
+                              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{hotel.group_id} Group</div>
+                            )}
+                          </div>
+                        </div>
+                        <div className={`
+                          w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all
+                          ${selectedHotels.includes(hotel.id) 
+                            ? 'bg-indigo-600 border-indigo-600' 
+                            : 'border-slate-200 group-hover:border-slate-300'}
+                        `}>
+                          {selectedHotels.includes(hotel.id) && <CheckCircle2 className="w-4 h-4 text-white" />}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="px-8 py-6 bg-slate-50/50 border-t border-slate-100 flex justify-end items-center gap-4">
+               <p className="mr-auto text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                  {selectedHotels.length} Hotel{selectedHotels.length !== 1 && 's'} Selected
+               </p>
+               <button
+                  type="button"
+                  onClick={() => setIsPermModalOpen(false)}
+                  className="px-6 py-3 text-sm font-bold text-slate-500 hover:bg-slate-100 rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSavePermissions}
+                  disabled={savingPerms || loadingPerms}
+                  className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-200 flex items-center gap-2 transition-all disabled:opacity-70 active:scale-[0.98]"
+                >
+                  {savingPerms ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                  Update Access
+                </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add User Modal */}
       {isModalOpen && (
