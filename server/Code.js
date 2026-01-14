@@ -30,14 +30,16 @@ function loginWithCredentials(email, password) {
     throw new Error(`ACCESS_DENIED: User with email ${email} was not found.`);
   }
 
-  // Assuming a column "password" exists in the Users sheet
   if (user.password !== password) {
     throw new Error(`ACCESS_DENIED: Incorrect password.`);
   }
   
-  // Strip password before returning to frontend for security
   const { password: _, ...userSafe } = user;
   return userSafe;
+}
+
+function getLoginTypes() {
+  return getTableData('Categories');
 }
 
 function getAccessibleHotels(user) {
@@ -142,7 +144,7 @@ function createUser(userData) {
     userData.group_id || null,
     userData.access_level || 'viewer',
     userData.avatar || null,
-    userData.password || 'Welcome123' // Default password for new users
+    userData.password || 'Welcome123'
   ];
   sheet.appendRow(newRow);
   return { id: newId, ...userData, email: userData.email.toLowerCase() };
