@@ -30,7 +30,10 @@ function loginWithCredentials(email, password) {
     throw new Error(`ACCESS_DENIED: User with email ${email} was not found.`);
   }
 
-  if (user.password !== password) {
+  // Decrypt the stored password for comparison
+  const decryptedStoredPassword = decrypt(user.password);
+  
+  if (decryptedStoredPassword !== password) {
     throw new Error(`ACCESS_DENIED: Incorrect password.`);
   }
   
@@ -168,6 +171,10 @@ function createUser(userData) {
   const ss = getDb();
   const sheet = ss.getSheetByName('Users');
   const newId = Utilities.getUuid();
+  
+  // Encrypt the user password before storage
+  const encryptedPassword = encrypt(userData.password || 'Welcome123');
+  
   const newRow = [
     newId,
     userData.email.toLowerCase(),
@@ -176,7 +183,7 @@ function createUser(userData) {
     userData.group_id || null,
     userData.access_level || 'viewer',
     userData.avatar || null,
-    userData.password || 'Welcome123'
+    encryptedPassword
   ];
   sheet.appendRow(newRow);
   return { id: newId, ...userData, email: userData.email.toLowerCase() };
@@ -232,6 +239,7 @@ function decrypt(text) {
   try {
     return Utilities.newBlob(Utilities.base64Decode(text)).getDataAsString();
   } catch (e) {
-    return "Error decrypting";
+    // If the data isn't Base64 (e.g. manually entered plain text), return as is
+    return text;
   }
 }
