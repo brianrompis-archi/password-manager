@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { Password, PasswordHistoryEntry } from '../types';
-import { demoUsers, mockAuthService } from '../services/mockDb';
+import { Password, PasswordHistoryEntry, User as UserType } from '../types';
+import { mockAuthService } from '../services/mockDb';
 import { 
   X, 
   Calendar, 
@@ -15,16 +15,16 @@ import {
   History,
   Info,
   Loader2,
-  ChevronRight
 } from 'lucide-react';
 
 interface PasswordDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   password?: Password;
+  users: UserType[];
 }
 
-const PasswordDetailModal: React.FC<PasswordDetailModalProps> = ({ isOpen, onClose, password }) => {
+const PasswordDetailModal: React.FC<PasswordDetailModalProps> = ({ isOpen, onClose, password, users }) => {
   const [activeTab, setActiveTab] = useState<'details' | 'history'>('details');
   const [showPassword, setShowPassword] = useState(false);
   const [history, setHistory] = useState<PasswordHistoryEntry[]>([]);
@@ -70,7 +70,7 @@ const PasswordDetailModal: React.FC<PasswordDetailModalProps> = ({ isOpen, onClo
   if (!isOpen || !password) return null;
 
   const getUserName = (id: string) => {
-    const user = demoUsers.find(u => u.id === id);
+    const user = users.find(u => u.id === id);
     return user ? user.name : id;
   };
 
@@ -252,7 +252,6 @@ const PasswordDetailModal: React.FC<PasswordDetailModalProps> = ({ isOpen, onClo
                 <div className="relative pl-6 border-l-2 border-slate-100 space-y-8 py-2">
                   {history.map((entry, index) => (
                     <div key={entry.id} className="relative">
-                      {/* Timeline Dot */}
                       <div className="absolute -left-[31px] top-1.5 w-4 h-4 rounded-full bg-white border-4 border-indigo-600 shadow-sm" />
                       
                       <div className="space-y-2">
@@ -307,8 +306,6 @@ const PasswordDetailModal: React.FC<PasswordDetailModalProps> = ({ isOpen, onClo
                       </div>
                     </div>
                   ))}
-                  
-                  {/* End of Timeline marker */}
                   <div className="absolute -left-[31px] -bottom-2 w-4 h-4 rounded-full bg-slate-100 border-4 border-white" />
                 </div>
               )}

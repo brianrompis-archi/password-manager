@@ -2,7 +2,13 @@
 // --- CONFIGURATION ---
 const DB_ID = '1iyGuNYEyVfhC07EUWm_XguBwVCXF5txq3JuWOLQFwN0'; 
 
-// --- WEB APP SERVING ---
+/**
+ * DEPLOYMENT INSTRUCTIONS:
+ * Keep:
+ * - Execute as: "Me"
+ * - Who has access: "Anyone"
+ */
+
 function doGet(e) {
   return HtmlService.createTemplateFromFile('index')
     .evaluate()
@@ -12,29 +18,26 @@ function doGet(e) {
 }
 
 /**
- * Automatically gets the email of the current logged-in Google User.
+ * Verifies the credentials provided by the user against the "Users" sheet.
  */
-function getActiveUserEmail() {
-  return Session.getActiveUser().getEmail();
-}
-
-/**
- * Validates the Google Account against the Users database.
- */
-function login() {
-  const email = getActiveUserEmail();
-  if (!email) {
-    throw new Error("Could not detect Google Account. Please ensure you are logged in.");
-  }
+function loginWithCredentials(email, password) {
+  if (!email || !password) throw new Error("Email and password are required");
   
   const users = getTableData('Users');
   const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
   
   if (!user) {
-    throw new Error(`Access Denied: ${email} is not registered in the system.`);
+    throw new Error(`ACCESS_DENIED: User with email ${email} was not found.`);
+  }
+
+  // Assuming a column "password" exists in the Users sheet
+  if (user.password !== password) {
+    throw new Error(`ACCESS_DENIED: Incorrect password.`);
   }
   
-  return user;
+  // Strip password before returning to frontend for security
+  const { password: _, ...userSafe } = user;
+  return userSafe;
 }
 
 function getAccessibleHotels(user) {
@@ -65,9 +68,6 @@ function getPasswordsForHotel(hotelId) {
     }));
 }
 
-/**
- * Retrieves audit history for a specific password
- */
 function getPasswordHistory(passwordId) {
   const allHistory = getTableData('PasswordHistory');
   return (allHistory || [])
@@ -87,11 +87,9 @@ function savePassword(data, userId) {
   const encryptedValue = encrypt(data.password_value);
 
   if (data.id) {
-    // 1. Log CURRENT state to history BEFORE updating
     const oldData = getTableData('Passwords').find(p => p.id == data.id);
     if (oldData) {
       const historyId = Utilities.getUuid();
-      // Columns: id, password_id, description, username, encrypted_password, changed_by, change_date
       historySheet.appendRow([
         historyId, 
         oldData.id, 
@@ -103,7 +101,6 @@ function savePassword(data, userId) {
       ]);
     }
 
-    // 2. Update main table
     const result = findRowIndex(passwordSheet, data.id);
     if (result === -1) throw new Error("Password ID not found");
     const row = result;
@@ -144,7 +141,8 @@ function createUser(userData) {
     userData.position,
     userData.group_id || null,
     userData.access_level || 'viewer',
-    userData.avatar || null
+    userData.avatar || null,
+    userData.password || 'Welcome123' // Default password for new users
   ];
   sheet.appendRow(newRow);
   return { id: newId, ...userData, email: userData.email.toLowerCase() };
@@ -158,8 +156,6 @@ function updateUserAccessLevel(userId, newLevel) {
   sheet.getRange(row, 6).setValue(newLevel);
   return { id: userId, access_level: newLevel };
 }
-
-// --- HELPERS ---
 
 function getDb() {
   return DB_ID ? SpreadsheetApp.openById(DB_ID) : SpreadsheetApp.getActiveSpreadsheet();

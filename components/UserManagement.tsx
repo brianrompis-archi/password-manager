@@ -2,13 +2,14 @@
 import React, { useEffect, useState } from 'react';
 import { User, AccessLevel } from '../types';
 import { mockAuthService } from '../services/mockDb';
-import { Search, UserCog, Shield, ShieldAlert, Eye, Plus, X, UserPlus, Loader2, Mail, Briefcase, Layers } from 'lucide-react';
+import { UserCog, Shield, ShieldAlert, Eye, Plus, X, UserPlus, Loader2, Mail, Briefcase, Layers } from 'lucide-react';
 
 interface UserManagementProps {
   currentUser: User;
+  onUserChange?: () => void;
 }
 
-const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) => {
+const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onUserChange }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -44,6 +45,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) => {
     try {
       await mockAuthService.updateUserAccessLevel(userId, newRole);
       setUsers(users.map(u => u.id === userId ? { ...u, access_level: newRole } : u));
+      if (onUserChange) onUserChange();
     } catch (e) {
       console.error("Failed to update role", e);
     } finally {
@@ -65,6 +67,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) => {
         group_id: '',
         access_level: 'viewer'
       });
+      if (onUserChange) onUserChange();
     } catch (err) {
       console.error("Failed to create user", err);
       alert("Error creating user. Check console.");
