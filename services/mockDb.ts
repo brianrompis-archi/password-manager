@@ -1,6 +1,5 @@
 
-// Fix: Removed Group, GroupHotel, and UserHotel as they are not exported members of '../types'
-import { Hotel, Password, PasswordHistoryEntry, User, Category } from '../types';
+import { Hotel, Password, PasswordHistoryEntry, User, Category, Group } from '../types';
 
 export const demoUsers: User[] = [
   { 
@@ -36,6 +35,16 @@ export const mockAuthService = {
     return demoUsers[0];
   },
 
+  sendVerificationCode: async (email: string): Promise<void> => {
+    if (isGAS()) return runGas('sendVerificationCode', email);
+    console.log("Mock code sent to", email);
+  },
+
+  verifyAndChangePassword: async (email: string, code: string, newPassword: string): Promise<void> => {
+    if (isGAS()) return runGas('verifyAndChangePassword', email, code, newPassword);
+    console.log("Mock password changed for", email);
+  },
+
   getLoginTypes: async (): Promise<Category[]> => {
     if (isGAS()) return runGas('getLoginTypes');
     return [
@@ -46,6 +55,14 @@ export const mockAuthService = {
       { id: '5', name: 'Vendor' },
       { id: '6', name: 'Social' },
       { id: '7', name: 'Other' }
+    ];
+  },
+
+  getGroups: async (): Promise<Group[]> => {
+    if (isGAS()) return runGas('getGroups');
+    return [
+      { id: 'g1', name: 'Archipelago Corporate' },
+      { id: 'g2', name: 'Bali Regional' }
     ];
   },
 

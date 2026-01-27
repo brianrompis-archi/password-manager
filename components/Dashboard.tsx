@@ -5,7 +5,7 @@ import { mockAuthService } from '../services/mockDb';
 import PasswordModal from './PasswordModal';
 import PasswordDetailModal from './PasswordDetailModal';
 import UserManagement from './UserManagement';
-// Fix: Added Loader2 to the lucide-react import
+import Profile from './Profile';
 import { 
   Building2, 
   Search, 
@@ -28,7 +28,8 @@ import {
   Users,
   Smartphone,
   LayoutGrid,
-  Loader2
+  Loader2,
+  Settings
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -36,7 +37,7 @@ interface DashboardProps {
   onLogout: () => void;
 }
 
-type ViewMode = 'passwords' | 'users';
+type ViewMode = 'passwords' | 'users' | 'profile';
 
 const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
   const [currentView, setCurrentView] = useState<ViewMode>('passwords');
@@ -47,7 +48,7 @@ const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [filterType, setFilterType] = useState<string>('All'); // Store ID or 'All'
+  const [filterType, setFilterType] = useState<string>('All'); 
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
 
   // Modal State
@@ -216,10 +217,24 @@ const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
           </div>
 
           {/* Navigation Links */}
-          {isAdmin && (
-            <div className="px-3 py-4 space-y-1 border-b border-slate-800">
+          <div className="px-3 py-4 space-y-1 border-b border-slate-800">
+             <div className="px-3 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Personal
+              </div>
+              <button
+                onClick={() => { setCurrentView('profile'); setMobileMenuOpen(false); }}
+                className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-3 text-sm font-medium transition-colors ${
+                  currentView === 'profile' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'
+                }`}
+              >
+                <UserIcon className="w-4 h-4" />
+                My Account
+              </button>
+          </div>
+
+          <div className="px-3 py-4 space-y-1 border-b border-slate-800">
               <div className="px-3 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Management
+                Vault
               </div>
               <button
                 onClick={() => { setCurrentView('passwords'); setMobileMenuOpen(false); }}
@@ -230,17 +245,19 @@ const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
                 <Key className="w-4 h-4" />
                 Password Vault
               </button>
-              <button
-                onClick={() => { setCurrentView('users'); setMobileMenuOpen(false); }}
-                className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-3 text-sm font-medium transition-colors ${
-                  currentView === 'users' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'
-                }`}
-              >
-                <Users className="w-4 h-4" />
-                User Management
-              </button>
-            </div>
-          )}
+
+              {isAdmin && (
+                <button
+                  onClick={() => { setCurrentView('users'); setMobileMenuOpen(false); }}
+                  className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-3 text-sm font-medium transition-colors ${
+                    currentView === 'users' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'
+                  }`}
+                >
+                  <Users className="w-4 h-4" />
+                  User Management
+                </button>
+              )}
+          </div>
 
           {/* Hotel List */}
           {currentView === 'passwords' && (
@@ -314,8 +331,10 @@ const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
             >
               <Menu className="w-6 h-6" />
             </button>
-            <h1 className="text-xl font-bold text-slate-800 truncate">
-              {currentView === 'users' ? 'User Administration' : (selectedHotel ? selectedHotel.name : 'Select a Hotel')}
+            <h1 className="text-xl font-bold text-slate-800 truncate uppercase tracking-tight">
+              {currentView === 'users' ? 'User Administration' : 
+               currentView === 'profile' ? 'My Account' :
+               (selectedHotel ? selectedHotel.name : 'Select a Hotel')}
             </h1>
           </div>
         </header>
@@ -324,6 +343,8 @@ const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
           
           {currentView === 'users' ? (
             <UserManagement currentUser={session.user} onUserChange={loadAllUsers} />
+          ) : currentView === 'profile' ? (
+            <Profile user={session.user} />
           ) : (
             selectedHotel ? (
               <div className="max-w-6xl mx-auto space-y-6">
@@ -510,7 +531,7 @@ const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
                   <div className="w-24 h-24 bg-indigo-50 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-inner">
                     <Building2 className="w-12 h-12 text-indigo-300" />
                   </div>
-                  <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight italic italic">Identity Verification Required</h2>
+                  <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight italic">Identity Verification Required</h2>
                   <p className="text-slate-500 mt-3 text-sm leading-relaxed">Please select an assigned hotel facility from the sidebar to authorize access to encrypted records.</p>
                 </div>
               </div>
