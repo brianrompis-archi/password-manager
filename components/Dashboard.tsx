@@ -29,7 +29,8 @@ import {
   Smartphone,
   LayoutGrid,
   Loader2,
-  Settings
+  Settings,
+  ChevronRight
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -47,6 +48,7 @@ const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [hotelSearchTerm, setHotelSearchTerm] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [filterType, setFilterType] = useState<string>('All'); 
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
@@ -75,6 +77,11 @@ const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
     const matchesType = filterType === 'All' || p.login_type === filterType;
     return matchesSearch && matchesType;
   });
+
+  // Derived state for filtered hotels in sidebar
+  const filteredHotels = (session.accessibleHotels || []).filter(h => 
+    h.name.toLowerCase().includes(hotelSearchTerm.toLowerCase())
+  );
 
   // Fetch initial data
   useEffect(() => {
@@ -259,33 +266,63 @@ const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
               )}
           </div>
 
-          {/* Hotel List */}
+          {/* Hotel List Section */}
           {currentView === 'passwords' && (
-            <div className="flex-1 overflow-y-auto py-6 px-3 space-y-1">
-              <div className="px-3 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Hotels
+            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-800/50">
+                <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Hotels</div>
+                
+                {/* Hotel Search Field */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                  <input 
+                    type="text" 
+                    placeholder="Search hotel list..."
+                    value={hotelSearchTerm}
+                    onChange={(e) => setHotelSearchTerm(e.target.value)}
+                    className="w-full bg-slate-950/40 border border-slate-800 rounded-xl py-2 pl-9 pr-8 text-xs text-slate-300 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all"
+                  />
+                  {hotelSearchTerm && (
+                    <button 
+                      onClick={() => setHotelSearchTerm('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-400 p-1"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
               </div>
-              {session.accessibleHotels.length === 0 ? (
-                <div className="px-3 text-sm text-slate-500 italic">No hotels assigned.</div>
-              ) : (
-                session.accessibleHotels.map(hotel => (
-                  <button
-                    key={hotel.id}
-                    onClick={() => {
-                      setSelectedHotel(hotel);
-                      setMobileMenuOpen(false);
-                    }}
-                    className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm font-medium transition-colors ${
-                      selectedHotel?.id === hotel.id
-                        ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-600/20'
-                        : 'hover:bg-slate-800 hover:text-white'
-                    }`}
-                  >
-                    <Building2 className={`w-5 h-5 ${selectedHotel?.id === hotel.id ? 'text-indigo-400' : 'text-slate-500'}`} />
-                    <span className="truncate">{hotel.name}</span>
-                  </button>
-                ))
-              )}
+
+              {/* Styled Scrollable Hotel List */}
+              <div className="flex-1 overflow-y-auto sidebar-scrollbar py-2 px-3 space-y-1">
+                {session.accessibleHotels.length === 0 ? (
+                  <div className="px-3 py-4 text-sm text-slate-600 italic">No hotels assigned.</div>
+                ) : filteredHotels.length === 0 ? (
+                  <div className="px-3 py-4 text-[11px] text-slate-600 italic flex items-center gap-2">
+                    <Filter className="w-3 h-3" />
+                    No matching hotels found.
+                  </div>
+                ) : (
+                  filteredHotels.map(hotel => (
+                    <button
+                      key={hotel.id}
+                      onClick={() => {
+                        setSelectedHotel(hotel);
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`group w-full text-left px-3 py-3 rounded-xl flex items-center gap-3 text-sm font-medium transition-all ${
+                        selectedHotel?.id === hotel.id
+                          ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20'
+                          : 'hover:bg-slate-800 hover:text-white text-slate-400'
+                      }`}
+                    >
+                      <Building2 className={`w-4 h-4 transition-colors ${selectedHotel?.id === hotel.id ? 'text-white' : 'text-slate-500 group-hover:text-slate-300'}`} />
+                      <span className="truncate flex-1">{hotel.name}</span>
+                      {selectedHotel?.id === hotel.id && <ChevronRight className="w-3 h-3 text-indigo-200" />}
+                    </button>
+                  ))
+                )}
+              </div>
             </div>
           )}
           
@@ -339,7 +376,7 @@ const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
           </div>
         </header>
 
-        <div className="flex-1 overflow-auto p-4 lg:p-8">
+        <div className="flex-1 overflow-auto p-4 lg:p-8 custom-scrollbar">
           
           {currentView === 'users' ? (
             <UserManagement currentUser={session.user} onUserChange={loadAllUsers} />

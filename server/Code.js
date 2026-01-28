@@ -69,12 +69,24 @@ function sendVerificationCode(email) {
 
   // Send the email
   const subject = "ARCHIPELAGO - Password Change Verification Code";
-  const body = `Your verification code is: ${code}\n\nThis code will expire in 10 minutes. If you did not request this, please ignore this email.`;
+  const body = `Your verification code is: ${code} <br><br>This code will expire in 10 minutes. If you did not request this, please ignore this email. <br><br>`;
   
   try {
-    MailApp.sendEmail(email, subject, body);
+    // Updated to use GmailApp to support sending from an alias
+    GmailApp.sendEmail(email, subject, '', {
+      from: 'corporateIT@archipelagohotels.com',
+      replyTo: 'corporateIT@archipelagohotels.com',
+      name: 'ARCHIPELAGO Corporate IT',
+      htmlBody: body
+    });
   } catch (e) {
-    throw new Error("Failed to send email. Ensure the app has MailApp permissions. " + e.message);
+    // Fallback logic if the alias is not configured or fails
+    try {
+      console.log("Failed to send email as corpIT " + e.message);
+      MailApp.sendEmail(email, subject, body);
+    } catch (innerError) {
+      throw new Error("Failed to send email. " + e.message);
+    }
   }
 
   return { success: true };
