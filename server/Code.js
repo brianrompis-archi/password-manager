@@ -266,6 +266,7 @@ function createUser(userData) {
   const sheet = ss.getSheetByName('Users');
   const newId = Utilities.getUuid();
   
+  // Encrypt the user password before storage
   const encryptedPassword = encrypt(userData.password || 'Welcome123');
   
   const newRow = [
@@ -332,6 +333,7 @@ function decrypt(text) {
   try {
     return Utilities.newBlob(Utilities.base64Decode(text)).getDataAsString();
   } catch (e) {
+    // If the data isn't Base64 (e.g. manually entered plain text), return as is
     return text;
   }
 }
