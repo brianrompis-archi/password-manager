@@ -41,8 +41,102 @@ function loginWithCredentials(email, password) {
   return userSafe;
 }
 
+/**
+ * Generates and sends a verification code to the user's email.
+ */
+function sendVerificationCode(email) {
+  const users = getTableData('Users');
+  const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+  if (!user) throw new Error("User not found");
+
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = new Date(Date.now() + 10 * 60000).toISOString(); // 10 minutes
+
+  const ss = getDb();
+  let sheet = ss.getSheetByName('VerificationCodes');
+  if (!sheet) {
+    sheet = ss.insertSheet('VerificationCodes');
+    sheet.appendRow(['email', 'code', 'expires_at']);
+  }
+
+  // Clean up old codes for this user
+  const data = sheet.getDataRange().getValues();
+  for (let i = data.length - 1; i >= 1; i--) {
+    if (data[i][0] === email) sheet.deleteRow(i + 1);
+  }
+
+  sheet.appendRow([email, code, expiresAt]);
+
+  // Send the email
+  const subject = "ARCHIPELAGO - Password Change Verification Code";
+  const body = `Your verification code is: ${code} <br><br>This code will expire in 10 minutes. If you did not request this, please ignore this email. <br><br>`;
+  
+  try {
+    // Updated to use GmailApp to support sending from an alias
+    GmailApp.sendEmail(email, subject, '', {
+      from: 'corporateIT@archipelagohotels.com',
+      replyTo: 'corporateIT@archipelagohotels.com',
+      name: 'ARCHIPELAGO Corporate IT',
+      htmlBody: body
+    });
+  } catch (e) {
+    // Fallback logic if the alias is not configured or fails
+    try {
+      console.log("Failed to send email as corpIT " + e.message);
+      MailApp.sendEmail(email, subject, body);
+    } catch (innerError) {
+      throw new Error("Failed to send email. " + e.message);
+    }
+  }
+
+  return { success: true };
+}
+
+/**
+ * Verifies the code and updates the user's password.
+ */
+function verifyAndChangePassword(email, code, newPassword) {
+  const ss = getDb();
+  const sheet = ss.getSheetByName('VerificationCodes');
+  if (!sheet) throw new Error("No verification session found.");
+
+  const data = sheet.getDataRange().getValues();
+  let validEntryIndex = -1;
+
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === email && data[i][1].toString() === code.toString()) {
+      const expiresAt = new Date(data[i][2]);
+      if (expiresAt > new Date()) {
+        validEntryIndex = i + 1;
+        break;
+      } else {
+        throw new Error("Verification code has expired.");
+      }
+    }
+  }
+
+  if (validEntryIndex === -1) throw new Error("Invalid verification code.");
+
+  // Update user password
+  const userSheet = ss.getSheetByName('Users');
+  const rowIndex = findRowIndex(userSheet, email, 1); // Search by email in column 2 (index 1)
+  if (rowIndex === -1) throw new Error("User record not found during update.");
+
+  const encryptedPassword = encrypt(newPassword);
+  userSheet.getRange(rowIndex, 8).setValue(encryptedPassword);
+
+  // Clean up code
+  sheet.deleteRow(validEntryIndex);
+
+  return { success: true };
+}
+
 function getLoginTypes() {
   return getTableData('Categories');
+}
+
+function getGroups() {
+  return getTableData('Groups');
 }
 
 function getAllHotels() {
@@ -61,7 +155,7 @@ function updateUserPermissions(userId, hotelIds) {
   const sheet = ss.getSheetByName('Permissions');
   const data = sheet.getDataRange().getValues();
   
-  // 1. Remove existing permissions for this user (starting from bottom to avoid index shift)
+  // 1. Remove existing permissions for this user
   for (let i = data.length - 1; i >= 1; i--) {
     if (data[i][1] === userId) {
       sheet.deleteRow(i + 1);
@@ -221,10 +315,10 @@ function getTableData(sheetName) {
   });
 }
 
-function findRowIndex(sheet, id) {
+function findRowIndex(sheet, id, columnIndex = 0) {
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0] == id) return i + 1;
+    if (data[i][columnIndex] == id) return i + 1;
   }
   return -1;
 }

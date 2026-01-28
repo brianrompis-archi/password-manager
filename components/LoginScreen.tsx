@@ -57,7 +57,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         {/* Login Form Section */}
         <div className="p-10">
           <div className="text-center mb-8">
-            <h2 className="text-xl font-bold text-slate-800">Internal Access</h2>
+            <h2 className="text-xl font-bold text-slate-800">Welcome Back</h2>
             <p className="text-slate-500 text-sm mt-2 leading-relaxed">
               Enter your corporate credentials to access hotel password vault.
             </p>
@@ -129,7 +129,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
           {/* Footer Decoration */}
           <div className="mt-12 pt-8 border-t border-slate-100 flex flex-col items-center gap-4">
-             <div className="text-[9px] font-black text-slate-300 uppercase tracking-[0.2em]">Group IT Infrastructure</div>
+             <div className="text-[9px] font-black text-slate-300 uppercase tracking-[0.2em]">Internal Use Only</div>
              <div className="flex gap-4">
                 <div className="w-1 h-1 rounded-full bg-slate-100"></div>
                 <div className="w-1 h-1 rounded-full bg-slate-100"></div>
@@ -140,7 +140,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       </div>
       
       <div className="fixed bottom-8 text-slate-500 text-[9px] font-black tracking-[0.4em] uppercase opacity-50">
-        &copy; 2025 Archipelago International
+        &copy; 2025 ARCHIPELAGO
       </div>
     </div>
   );

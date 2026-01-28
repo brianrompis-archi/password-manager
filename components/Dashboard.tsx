@@ -5,7 +5,7 @@ import { mockAuthService } from '../services/mockDb';
 import PasswordModal from './PasswordModal';
 import PasswordDetailModal from './PasswordDetailModal';
 import UserManagement from './UserManagement';
-// Fix: Added Loader2 to the lucide-react import
+import Profile from './Profile';
 import { 
   Building2, 
   Search, 
@@ -28,7 +28,9 @@ import {
   Users,
   Smartphone,
   LayoutGrid,
-  Loader2
+  Loader2,
+  Settings,
+  ChevronRight
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -36,7 +38,7 @@ interface DashboardProps {
   onLogout: () => void;
 }
 
-type ViewMode = 'passwords' | 'users';
+type ViewMode = 'passwords' | 'users' | 'profile';
 
 const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
   const [currentView, setCurrentView] = useState<ViewMode>('passwords');
@@ -46,8 +48,9 @@ const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [hotelSearchTerm, setHotelSearchTerm] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [filterType, setFilterType] = useState<string>('All'); // Store ID or 'All'
+  const [filterType, setFilterType] = useState<string>('All'); 
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
 
   // Modal State
@@ -74,6 +77,11 @@ const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
     const matchesType = filterType === 'All' || p.login_type === filterType;
     return matchesSearch && matchesType;
   });
+
+  // Derived state for filtered hotels in sidebar
+  const filteredHotels = (session.accessibleHotels || []).filter(h => 
+    h.name.toLowerCase().includes(hotelSearchTerm.toLowerCase())
+  );
 
   // Fetch initial data
   useEffect(() => {
@@ -216,10 +224,24 @@ const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
           </div>
 
           {/* Navigation Links */}
-          {isAdmin && (
-            <div className="px-3 py-4 space-y-1 border-b border-slate-800">
+          <div className="px-3 py-4 space-y-1 border-b border-slate-800">
+             <div className="px-3 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Personal
+              </div>
+              <button
+                onClick={() => { setCurrentView('profile'); setMobileMenuOpen(false); }}
+                className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-3 text-sm font-medium transition-colors ${
+                  currentView === 'profile' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'
+                }`}
+              >
+                <UserIcon className="w-4 h-4" />
+                My Account
+              </button>
+          </div>
+
+          <div className="px-3 py-4 space-y-1 border-b border-slate-800">
               <div className="px-3 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Management
+                Vault
               </div>
               <button
                 onClick={() => { setCurrentView('passwords'); setMobileMenuOpen(false); }}
@@ -230,45 +252,77 @@ const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
                 <Key className="w-4 h-4" />
                 Password Vault
               </button>
-              <button
-                onClick={() => { setCurrentView('users'); setMobileMenuOpen(false); }}
-                className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-3 text-sm font-medium transition-colors ${
-                  currentView === 'users' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'
-                }`}
-              >
-                <Users className="w-4 h-4" />
-                User Management
-              </button>
-            </div>
-          )}
 
-          {/* Hotel List */}
-          {currentView === 'passwords' && (
-            <div className="flex-1 overflow-y-auto py-6 px-3 space-y-1">
-              <div className="px-3 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Hotels
-              </div>
-              {session.accessibleHotels.length === 0 ? (
-                <div className="px-3 text-sm text-slate-500 italic">No hotels assigned.</div>
-              ) : (
-                session.accessibleHotels.map(hotel => (
-                  <button
-                    key={hotel.id}
-                    onClick={() => {
-                      setSelectedHotel(hotel);
-                      setMobileMenuOpen(false);
-                    }}
-                    className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm font-medium transition-colors ${
-                      selectedHotel?.id === hotel.id
-                        ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-600/20'
-                        : 'hover:bg-slate-800 hover:text-white'
-                    }`}
-                  >
-                    <Building2 className={`w-5 h-5 ${selectedHotel?.id === hotel.id ? 'text-indigo-400' : 'text-slate-500'}`} />
-                    <span className="truncate">{hotel.name}</span>
-                  </button>
-                ))
+              {isAdmin && (
+                <button
+                  onClick={() => { setCurrentView('users'); setMobileMenuOpen(false); }}
+                  className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-3 text-sm font-medium transition-colors ${
+                    currentView === 'users' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'
+                  }`}
+                >
+                  <Users className="w-4 h-4" />
+                  User Management
+                </button>
               )}
+          </div>
+
+          {/* Hotel List Section */}
+          {currentView === 'passwords' && (
+            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-800/50">
+                <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Hotels</div>
+                
+                {/* Hotel Search Field */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                  <input 
+                    type="text" 
+                    placeholder="Search hotel list..."
+                    value={hotelSearchTerm}
+                    onChange={(e) => setHotelSearchTerm(e.target.value)}
+                    className="w-full bg-slate-950/40 border border-slate-800 rounded-xl py-2 pl-9 pr-8 text-xs text-slate-300 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all"
+                  />
+                  {hotelSearchTerm && (
+                    <button 
+                      onClick={() => setHotelSearchTerm('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-400 p-1"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Styled Scrollable Hotel List */}
+              <div className="flex-1 overflow-y-auto sidebar-scrollbar py-2 px-3 space-y-1">
+                {session.accessibleHotels.length === 0 ? (
+                  <div className="px-3 py-4 text-sm text-slate-600 italic">No hotels assigned.</div>
+                ) : filteredHotels.length === 0 ? (
+                  <div className="px-3 py-4 text-[11px] text-slate-600 italic flex items-center gap-2">
+                    <Filter className="w-3 h-3" />
+                    No matching hotels found.
+                  </div>
+                ) : (
+                  filteredHotels.map(hotel => (
+                    <button
+                      key={hotel.id}
+                      onClick={() => {
+                        setSelectedHotel(hotel);
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`group w-full text-left px-3 py-3 rounded-xl flex items-center gap-3 text-sm font-medium transition-all ${
+                        selectedHotel?.id === hotel.id
+                          ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20'
+                          : 'hover:bg-slate-800 hover:text-white text-slate-400'
+                      }`}
+                    >
+                      <Building2 className={`w-4 h-4 transition-colors ${selectedHotel?.id === hotel.id ? 'text-white' : 'text-slate-500 group-hover:text-slate-300'}`} />
+                      <span className="truncate flex-1">{hotel.name}</span>
+                      {selectedHotel?.id === hotel.id && <ChevronRight className="w-3 h-3 text-indigo-200" />}
+                    </button>
+                  ))
+                )}
+              </div>
             </div>
           )}
           
@@ -314,16 +368,20 @@ const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
             >
               <Menu className="w-6 h-6" />
             </button>
-            <h1 className="text-xl font-bold text-slate-800 truncate">
-              {currentView === 'users' ? 'User Administration' : (selectedHotel ? selectedHotel.name : 'Select a Hotel')}
+            <h1 className="text-xl font-bold text-slate-800 truncate uppercase tracking-tight">
+              {currentView === 'users' ? 'User Administration' : 
+               currentView === 'profile' ? 'My Account' :
+               (selectedHotel ? selectedHotel.name : 'Select a Hotel')}
             </h1>
           </div>
         </header>
 
-        <div className="flex-1 overflow-auto p-4 lg:p-8">
+        <div className="flex-1 overflow-auto p-4 lg:p-8 custom-scrollbar">
           
           {currentView === 'users' ? (
             <UserManagement currentUser={session.user} onUserChange={loadAllUsers} />
+          ) : currentView === 'profile' ? (
+            <Profile user={session.user} />
           ) : (
             selectedHotel ? (
               <div className="max-w-6xl mx-auto space-y-6">
@@ -510,7 +568,7 @@ const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
                   <div className="w-24 h-24 bg-indigo-50 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-inner">
                     <Building2 className="w-12 h-12 text-indigo-300" />
                   </div>
-                  <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight italic italic">Identity Verification Required</h2>
+                  <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight italic">Identity Verification Required</h2>
                   <p className="text-slate-500 mt-3 text-sm leading-relaxed">Please select an assigned hotel facility from the sidebar to authorize access to encrypted records.</p>
                 </div>
               </div>

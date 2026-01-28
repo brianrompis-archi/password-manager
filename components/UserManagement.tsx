@@ -1,12 +1,13 @@
 
 import React, { useEffect, useState } from 'react';
-import { User, AccessLevel, Hotel } from '../types';
+import { User, AccessLevel, Hotel, Group } from '../types';
 import { mockAuthService } from '../services/mockDb';
 import { 
   UserCog, 
   Shield, 
   ShieldAlert, 
   Eye, 
+  EyeOff,
   Plus, 
   X, 
   UserPlus, 
@@ -17,7 +18,9 @@ import {
   LockKeyhole,
   CheckCircle2,
   Building2,
-  Search
+  Search,
+  ChevronDown,
+  Lock
 } from 'lucide-react';
 
 interface UserManagementProps {
@@ -27,18 +30,21 @@ interface UserManagementProps {
 
 const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onUserChange }) => {
   const [users, setUsers] = useState<User[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   
   // Create User Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showNewUserPassword, setShowNewUserPassword] = useState(false);
   const [newUser, setNewUser] = useState<Partial<User>>({
     name: '',
     email: '',
     position: '',
     group_id: '',
-    access_level: 'viewer'
+    access_level: 'viewer',
+    password: ''
   });
 
   // Permissions Modal State
@@ -51,15 +57,20 @@ const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onUserChan
   const [permSearch, setPermSearch] = useState('');
 
   useEffect(() => {
-    loadUsers();
+    loadInitialData();
   }, []);
 
-  const loadUsers = async () => {
+  const loadInitialData = async () => {
+    setLoading(true);
     try {
-      const data = await mockAuthService.getAllUsers();
-      setUsers(data);
+      const [usersData, groupsData] = await Promise.all([
+        mockAuthService.getAllUsers(),
+        mockAuthService.getGroups()
+      ]);
+      setUsers(usersData);
+      setGroups(groupsData);
     } catch (e) {
-      console.error("Failed to load users", e);
+      console.error("Failed to load initial data", e);
     } finally {
       setLoading(false);
     }
@@ -123,12 +134,14 @@ const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onUserChan
       const createdUser = await mockAuthService.createUser(newUser);
       setUsers(prev => [...prev, createdUser]);
       setIsModalOpen(false);
+      setShowNewUserPassword(false);
       setNewUser({
         name: '',
         email: '',
         position: '',
         group_id: '',
-        access_level: 'viewer'
+        access_level: 'viewer',
+        password: ''
       });
       if (onUserChange) onUserChange();
     } catch (err) {
@@ -145,6 +158,12 @@ const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onUserChan
       case 'manager': return <Shield className="w-4 h-4 text-indigo-600" />;
       default: return <Eye className="w-4 h-4 text-slate-500" />;
     }
+  };
+
+  const getGroupName = (groupId: string | null) => {
+    if (!groupId) return 'No Group';
+    const group = groups.find(g => g.id === groupId);
+    return group ? group.name : groupId;
   };
 
   const filteredPermHotels = allHotels.filter(h => 
@@ -215,7 +234,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onUserChan
                   <td className="px-6 py-4">
                     {user.group_id ? (
                       <span className="inline-flex items-center px-2 py-1 rounded bg-slate-100 text-slate-600 text-xs font-medium border border-slate-200">
-                        {user.group_id}
+                        {getGroupName(user.group_id)}
                       </span>
                     ) : (
                       <span className="text-slate-400 text-xs italic">No Group</span>
@@ -417,6 +436,28 @@ const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onUserChan
                   </div>
                 </div>
 
+                <div className="col-span-full">
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Initial Password</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type={showNewUserPassword ? "text" : "password"}
+                      required
+                      value={newUser.password ?? ''}
+                      onChange={e => setNewUser({ ...newUser, password: e.target.value })}
+                      placeholder="••••••••"
+                      className="w-full pl-10 pr-12 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewUserPassword(!showNewUserPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 transition-colors"
+                    >
+                      {showNewUserPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Position</label>
                   <div className="relative">
@@ -433,16 +474,24 @@ const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onUserChan
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Group ID (Optional)</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Organization Group</label>
                   <div className="relative">
-                    <Layers className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                      type="text"
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <Layers className="w-4 h-4 text-slate-400" />
+                    </div>
+                    <select
                       value={newUser.group_id ?? ''}
                       onChange={e => setNewUser({ ...newUser, group_id: e.target.value })}
-                      placeholder="g1"
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-mono"
-                    />
+                      className="w-full pl-10 pr-10 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm appearance-none bg-white"
+                    >
+                      <option value="">None (Standalone)</option>
+                      {groups.map(group => (
+                        <option key={group.id} value={group.id}>{group.name}</option>
+                      ))}
+                    </select>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <ChevronDown className="w-4 h-4 text-slate-400" />
+                    </div>
                   </div>
                 </div>
 
